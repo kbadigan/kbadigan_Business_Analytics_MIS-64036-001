@@ -1,0 +1,313 @@
+---
+title: "Group Project BA"
+author: "Group 9"
+date: "2022-11-23"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE)
+knitr::opts_chunk$set(message = FALSE)
+```
+
+## Packages
+
+```{r packages, warning=FALSE, message=FALSE, include=FALSE}
+
+library(class)
+library(caret)
+library(ISLR)
+library(tidyverse)
+library(fastDummies)
+library(knitr)
+library(dplyr)
+library(car)
+library(leaps)
+library(bestglm)
+library(rpart)
+library(rattle)
+library(VIM)
+library(ggcorrplot)
+library(cowplot)
+library(caret)
+library(pROC)
+library(ROCR)
+```
+
+## Importing & Cleaning Data
+
+```{r import and clean Data}
+churn_Data <- read.csv("C://Users//gbkar//Documents//R Scripts//Churn_Train.csv")
+
+
+# converting yes, no to 1's and 0's
+churn_Data$churn<-ifelse(churn_Data$churn=="yes",1,0)
+churn_Data$churn<-as.factor(churn_Data$churn)
+churn_Data$international_plan<-ifelse(churn_Data$international_plan=="yes",1,0)
+churn_Data$international_plan<-as.factor(churn_Data$international_plan)
+churn_Data$voice_mail_plan<-ifelse(churn_Data$voice_mail_plan=="yes",1,0)
+churn_Data$voice_mail_plan<-as.factor(churn_Data$voice_mail_plan)
+
+# loading test data
+load("C:/Users/gbkar/Downloads/Customers_To_Predict.RData")
+ 
+
+
+# Making categorical variables into factors
+churn_Data$area_code<-as.factor(churn_Data$area_code)
+
+str(churn_Data)
+```
+
+## Handling NA values and Negative Values
+
+We can observe that there are negative values in account length column, assuming that that they might be mistakenly entered negative, hence taking their absolute values.
+
+```{r na }
+
+churn_T<-na.omit(churn_Data)
+
+g1<-ggplot(churn_Data, aes(x=churn, y=..prop..,group = 1)) + 
+  geom_bar(fill=c(`0` = "#2F7042",
+    `1` = "#B42424")) +
+  theme_classic() + 
+  geom_text(aes(label=round(..prop..,2)),stat = "count",
+            position = position_stack(vjust=0.5)) + 
+  labs(y = 'Proportion', title = "Churn ratio with NA") +
+  scale_x_discrete(labels = c("No","Yes"))
+
+
+
+g2<-ggplot(churn_T, aes(x=churn, y=..prop..,group = 1)) + 
+  geom_bar(fill=c(`0` = "#2F7042",
+    `1` = "#B42424")) +
+  theme_classic() + 
+  geom_text(aes(label=round(..prop..,2)),stat = "count",
+            position = position_stack(vjust=0.5)) + 
+  labs(y = 'Proportion', title = "Churn ratio without NA") +
+  scale_x_discrete(labels = c("No","Yes"))
+
+plot_grid(g1, g2, ncol = 2, nrow = 1)
+
+
+# Since the proportions of churn is not disturbed we can go ahead with removing the rows of NA values
+
+
+# There are negative values in few rows. Assuming they are errors and we are converting them into positive values
+
+churn_T<-churn_T%>% mutate_if(is.numeric, function(x) {
+    ifelse(x < 0, abs(x), x)
+  })
+
+
+```
+
+We can observe from above that churn ratio before and after removing NA values remains the same, hence we are removing NA values as there is no impact on the data after removing them.
+
+## Data Exploration
+
+```{r exploration}
+
+
+
+
+Churn_Data_cor <- round(cor(churn_T %>% select_if(is.numeric)), 1)
+
+ggcorrplot(Churn_Data_cor,  title = "Correlation of Churn Data", type = "lower") 
+
+
+
+
+```
+
+From the correlation plot, we can observe strong correlations between calls and minutes. From the above plot, we can conclude that call minutes and charges are important variables to decide churn.
+
+```{r plots}
+g5<-ggplot(churn_T) +
+  aes(x = total_day_minutes, fill = churn) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue(direction = 1) +
+  theme_minimal()
+
+g6<-ggplot(churn_T) +
+  aes(x = total_eve_minutes, fill = churn) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue(direction = 1) +
+  theme_minimal()
+
+g7<-ggplot(churn_T) +
+  aes(x = state, fill = churn) +
+  geom_bar() +
+  scale_fill_hue(direction = 1) +
+  theme_minimal()
+
+g8<-ggplot(churn_T) +
+  aes(x = area_code, fill = churn) +
+  geom_bar() +
+  scale_fill_hue(direction = 1) +
+  theme_minimal()
+
+g9<-ggplot(churn_T) +
+  aes(x = number_customer_service_calls, fill = churn) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue(direction = 1) +
+  theme_minimal()
+
+g10<-ggplot(churn_T) +
+  aes(x = total_intl_minutes, fill = international_plan) +
+  geom_histogram(bins = 30L) +
+  scale_fill_manual(
+    values = c(`0` = "#D91103",
+    `1` = "#0828D9")
+  ) +
+  theme_minimal()
+
+g11<-ggplot(churn_T) +
+  aes(x = total_night_minutes, fill = churn) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue(direction = 1) +
+  theme_minimal()
+
+g12<-ggplot(churn_T) +
+  aes(x = total_intl_charge, fill = churn) +
+  geom_histogram(bins = 30L) +
+  scale_fill_hue(direction = 1) +
+  theme_minimal()
+plot_grid(g10,g12,g5, g6,g11,g8,g9, ncol = 2,nrow = 4)
+plot_grid(g8,g12,g5, g6,g11,g8,g9, ncol = 2,nrow = 4)
+
+```
+
+From the above plots we can observe that various distributions of churn across various variables.
+
+```{r ratio}
+churn_T%>%filter(churn==1)%>%group_by(state)%>%summarize(churn_customers_count=n())%>%arrange(desc(churn_customers_count))%>% filter(churn_customers_count>10)
+```
+
+From the above we can observe that, Texas and Maryland states have high churn customer count.
+
+## Partitioning the data into Train and Validation
+
+```{r partition}
+set.seed(123)
+Index_Train<-createDataPartition(churn_T$churn, p=0.7, list=FALSE)
+
+churn_T_Train <-churn_T[Index_Train,]
+churn_T_Validation  <-churn_T[-Index_Train,]
+
+
+```
+
+## Logistic Regression Model
+
+```{r logistic}
+set.seed(111)
+
+# removing first 3 variables and building model
+bh<- glm(churn~.,data=churn_T_Train[,-c(1,2,3)],family=binomial)
+
+# summary of model
+summary(bh)
+
+# Checking anova for variable importance
+anova(bh)
+
+
+# Deciding Cutoff based on the roc performance
+t1<-predict(bh,churn_T_Validation[-20] , type = "response")
+
+ROCR_pred_test <- prediction(t1, churn_T_Validation$churn)
+
+
+ROCR_perf_test <- performance(ROCR_pred_test,'tpr','fpr')
+
+
+plot(ROCR_perf_test,colorize=TRUE,print.cutoffs.at=seq(0.1,by=0.1))
+cost_perf = performance(ROCR_pred_test, "cost") 
+
+
+cut_off_logistic<-ROCR_pred_test@cutoffs[[1]][which.min(cost_perf@y.values[[1]])][[1]]
+
+print(paste('cut off based on cost measure is',cut_off_logistic))
+
+test <- as.factor(ifelse(t1> cut_off_logistic  ,"1","0"))
+c1<-confusionMatrix(test, churn_T_Validation$churn,positive='1')
+
+
+c1
+```
+
+Based on ROC curve and cost measure **0.464048595663646**.
+
+With **Accuracy of 87.33 % and sensitivity of 24.561%**
+
+## Decision Tree Model
+
+### Before Pruning
+
+```{r decision trees anova without pruning}
+set.seed(234)
+dt<-rpart(churn~.,data=churn_T_Train,method="anova")
+dt_no_prune<-rpart(churn~.,data=churn_T_Train,method="class")
+printcp(dt_no_prune)
+fancyRpartPlot(dt_no_prune)
+
+test1 <- predict(dt_no_prune,churn_T_Validation[-20] ,type='class') 
+confusionMatrix(test1, churn_T_Validation$churn,positive='1')
+
+```
+
+Observed 93.28 Accuracy with 64.9% Sensitivity
+
+After 11th split, the cross validation error starts to increase. Hence we are taking cp=0.02001650.
+
+### Decision trees after pruning
+
+```{r Prediction decision tree}
+mo<-rpart(churn~.,data=churn_T_Train,method="class",cp=0.02001650)
+
+fancyRpartPlot(mo)
+
+test3 <- predict(mo,churn_T_Validation[-20] ,type='class') 
+t2 <- predict(mo,churn_T_Validation[-20],type='prob') 
+confusionMatrix(test3, churn_T_Validation$churn,positive='1')
+
+
+```
+
+We can observe 93.41% Accuracy with 62.28% of Sensitivity
+
+## Logistic Regression vs Decision Trees
+
+```{r accuracy plots}
+
+plot.roc(roc(churn_T_Validation$churn, t1),col='blue',print.auc = TRUE,main = "ROC curves")
+plot.roc(roc(churn_T_Validation$churn, t2[,2]),col='red',add=TRUE,print.auc = TRUE, print.auc.y = .4)
+legend("bottomright", 
+       legend = c("Logistic Regression", "Decision Tree"), 
+       col = c("blue", "red"),
+       lty = c(1,1),
+       lwd = c(1, 1))
+
+```
+
+We can observe that, AUC of Decision Trees is 88% when compared to Logistic regression model with 80.8%. Hence we are choosing Decision Tree model
+
+## Prediction of Test Data
+
+```{r prediction}
+Customers_To_Predict$international_plan<-ifelse(Customers_To_Predict$international_plan=="yes",1,0)
+Customers_To_Predict$voice_mail_plan<-ifelse(Customers_To_Predict$voice_mail_plan=="yes",1,0)
+Customers_To_Predict$international_plan<-as.factor(Customers_To_Predict$international_plan)
+Customers_To_Predict$voice_mail_plan<-as.factor(Customers_To_Predict$voice_mail_plan)
+Predicted_Churn<- predict(dt_no_prune,Customers_To_Predict ,type='class')
+
+Customers_To_Predict1<-Customers_To_Predict
+Customers_To_Predict1$predicted_churn<-Predicted_Churn
+Customers_To_Predict1<-Customers_To_Predict1%>% mutate(predicted_churn=case_when((predicted_churn=='1')~'yes',
+                                                               (predicted_churn=='0')~'no'))
+
+table(Predicted_Churn)
+```
+
+
