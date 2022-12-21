@@ -1,0 +1,182 @@
+---
+title: "BA_Assignment_2"
+author: "Karthik Badiganti"
+date: "2022-10-10"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading Packages
+
+```{r packages}
+library(tidyverse)
+library(dplyr)
+library(zoo)
+```
+
+## Importing & Cleaning Data
+
+We are Importing Data from CSV file and cleaning
+
+```{r import and clean Data}
+
+
+Online_retail <- read.csv("C://Users//gbkar//Documents//R Scripts//Online_Retail.csv")
+
+
+```
+
+## Question 1
+
+```{r q1}
+Online_retail %>%
+  group_by(Country)  %>%
+  summarise(percentage=(n()/nrow(Online_retail))*100, Total=n()) %>%
+  filter(percentage>1)
+
+
+```
+
+## Question 2
+
+```{r q2}
+Online_retail <- Online_retail %>%
+  mutate(TransactionValue = Quantity*UnitPrice
+    )
+head(Online_retail)
+```
+
+## Question 3
+
+```{r q3}
+Online_retail %>% group_by(Country)  %>%
+  summarise(Total_sum_Transaction=sum(TransactionValue))%>%
+  filter(Total_sum_Transaction>130000)
+```
+
+## Question 4 prep
+
+```{r q4 prep}
+Temp=strptime(Online_retail$InvoiceDate,format='%m/%d/%Y %H:%M',tz='GMT')
+Online_retail$New_Invoice_Date <- as.Date(Temp) 
+Online_retail$Invoice_Day_Week= weekdays(Online_retail$New_Invoice_Date) 
+Online_retail$New_Invoice_Hour = as.numeric(format(Temp, "%H")) 
+Online_retail$New_Invoice_Month = as.numeric(format(Temp, "%m")) 
+head(Online_retail)
+```
+
+## Question 4
+
+```{r q4}
+
+# a 
+
+Online_retail %>% group_by(Invoice_Day_Week)  %>%
+  summarise(percentage_by_num=(sum(TransactionValue)/sum(Online_retail$TransactionValue)*100))
+
+# b
+Online_retail %>% group_by(Invoice_Day_Week)  %>%
+  summarise(percentage_by_volume=(n()/nrow(Online_retail))*100)
+
+# c
+Online_retail %>% group_by(New_Invoice_Month)%>% 
+  summarise(month_percentage=(n()/nrow(Online_retail))*100)
+# d
+Online_retail %>% filter(Country=='Australia')%>% 
+  group_by(New_Invoice_Date) %>% summarise(max_Trans_count=n())%>%
+  filter(max_Trans_count==max(max_Trans_count)) 
+# e
+Hour1<-as.data.frame(Online_retail %>%
+                       filter(New_Invoice_Hour>6 & New_Invoice_Hour<21 )%>%
+                       group_by(New_Invoice_Hour)%>%
+                       summarise(Trans_count=n()))
+Hour2<-which.min((rollapply(Hour1$Trans_count,2,sum)))
+print("The consecutive 2 hours where the downtime can be done is:")
+Hour1[c(Hour2,Hour2+1),1]
+
+```
+
+## Question 5
+
+```{r q5}
+
+Online_retail%>%
+  filter(Country=='Germany')  %>%
+  with(hist(TransactionValue,breaks=100,ylim=c(0,6500),xlim=c(-200,200),col='red'))
+
+```
+
+## Question 6
+
+```{r q6}
+Online_retail%>% group_by(CustomerID)%>% 
+  summarise(max_num_trans=n())%>%
+  filter(!is.na(CustomerID))%>% 
+  filter(max_num_trans==max(max_num_trans))
+
+                                                           
+Online_retail%>% group_by(CustomerID)%>%
+  filter(!is.na(CustomerID))%>% 
+  summarise(max_sum_trans=sum(TransactionValue))%>% 
+  filter(max_sum_trans==max(max_sum_trans))
+
+```
+
+## Question 7
+
+```{r q7}
+missing_values<-as.data.frame(Online_retail%>%
+                                sapply(function(x) sum(is.na(x))))
+colnames(missing_values)[1] ="Percentage"
+(missing_values/nrow(Online_retail))*100
+
+```
+
+## Question 8
+
+```{r q8}
+Online_retail%>% 
+  filter(is.na(CustomerID)) %>% 
+  group_by(Country) %>% 
+  summarise(no_of_missing=n())
+
+```
+
+## Question 9
+
+```{r q9}
+print(paste("The average days difference between customer transactions is",(Online_retail%>% 
+  group_by(New_Invoice_Date) %>% 
+  summarise(n())%>%
+  summarise(Average_diff_between_transaction=mean(diff(New_Invoice_Date))))))
+
+
+```
+
+## Question 10
+
+```{R q10}
+Online_retail%>% group_by(Country) %>% filter(Quantity<0 & Country=='France')%>%
+  summarise(return_rate=n()/nrow(Online_retail))
+
+```
+
+## Question 11
+
+```{r q11}
+print("The product which is purchased maximum is:")
+Online_retail%>% group_by(Description) %>% summarise(product_Value=(sum(TransactionValue)))%>%
+  filter(product_Value==max(product_Value))
+                                                       
+```
+
+## Question 12
+
+```{r q12}
+
+Customer<-Online_retail%>%filter(!is.na(CustomerID))
+       print(paste("No. of Unique customers are: ",(length(unique(Customer$CustomerID)))))
+```
