@@ -1,0 +1,44 @@
+---
+output:
+  word_document: default
+  html_document: default
+  pdf_document: default
+---
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+
+```{r}
+#Loading ISLR Package
+
+library(ISLR)
+#Summary of Car seats
+summary(Carseats)
+
+```
+```{r}
+# No.of rows in dataset
+print(paste("no. of rows in dataset:",nrow(Carseats)))
+
+# Max value in advertising
+print(paste("Max value of Advertising attribute:",max(Carseats$Advertising)))
+
+# IQR Value
+print(paste("IQR value of Price attribute:",IQR(Carseats$Price)))
+
+```
+
+```{r}
+# Loading car package for scatterplot
+library(car)
+
+# Scatterplotting sales vs price
+scatterplot(Price ~ Sales, data=Carseats, xlab='Sales', ylab='Price', main='Sales vs Price')
+
+# Correlation between Sales and price
+cor(Carseats$Sale,Carseats$Price)
+```
+Here, from the plot we notice that, as the Price of the Carseats are increasing the sales are decreasing.\
+From the above we calculated the correlation of Price and Sales of the Carseats. We notice that the correlation between the two is a negative moderate linear correlation.
