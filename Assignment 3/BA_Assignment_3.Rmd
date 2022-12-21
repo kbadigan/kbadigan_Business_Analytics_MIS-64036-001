@@ -1,0 +1,148 @@
+---
+title: "Regression"
+author: "Karthik Badiganti"
+date: "2022-11-11"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Loading Packages
+
+```{r packages}
+library(mlbench) 
+```
+
+## Q1
+
+```{r q1}
+set.seed(2017) 
+X=runif(100)*10 
+Y=X*4+3.45 
+Y=rnorm(100)*0.29*Y+Y 
+#a
+plot(X,Y)
+# b
+Model=lm(Y~X)
+s<-summary(Model)
+s
+#c
+print(paste('The r square of the above model is',s$r.squared))
+
+print(paste('The correlation of the model is',cor(X,Y)))
+
+print(paste('When we take a square root of r.squared we get',sqrt(s$r.squared)))
+```
+
+From the above we consider square root of r-squared as positive because it has a positive slope which we observe from the plot which in turn illustrates that X increases with respect to Y. **Hence we can say that, In simple linear regression models which consist of only one independent variable and one dependent variable, the coefficient of determination is equal to the square of the correlation coefficient of the variable.**
+
+## Q2
+
+### *a. James wants to buy a car. He and his friend, Chris, have different opinions about the Horse Power (hp) of cars. James think the weight of a car (wt) can be used to estimate the Horse Power of the car while Chris thinks the fuel consumption expressed in Mile Per Gallon (mpg), is a better estimator of the (hp). Who do you think is right? Construct simple linear models using mtcars data to answer the question.*
+
+```{r 2a}
+summary(lm(mtcars$hp~mtcars$wt))$call
+print(paste
+      ('The accuracy by using James opinion of weight as independent variable is'
+        ,round(((summary(lm(mtcars$hp~mtcars$wt))$r.squared)*100),2),'%'))
+
+summary(lm(mtcars$hp~mtcars$mpg))$call
+print(paste
+      ('The accuracy by using Chris opinion of mpg as independent variable is'
+        ,round(((summary(lm(mtcars$hp~mtcars$mpg))$r.squared)*100),2),'%'))
+```
+
+We can see that Chris opinion that horse power depends on mpg is more accurate with **60.24%** than James opinion of weight which has only **43.39% accuracy.**
+
+### b. *Build a model that uses the number of cylinders (cyl) and the mile per gallon (mpg) values of a car to predict the car Horse Power (hp). Using this model, what is the estimated Horse Power of a car with 4 calendar and mpg of 22?*
+
+```{r 2b}
+
+mcars<-lm(hp~cyl+mpg,data=mtcars)
+
+print(paste('Accuracy of the model with cyl and mpg as independent variables is'
+            ,round((summary(mcars)$r.squared)*100,2),'%'))
+hp_predict<-predict(mcars,data.frame(cyl=4,mpg=22))
+print(paste('The predicted horse power for cyl=4 and mpg=22 is',hp_predict[[1]]))
+
+```
+
+## Q3
+
+```{r Q3}
+
+data(BostonHousing) 
+
+head(BostonHousing)
+```
+
+## a. *Estimate the median value of owner-occupied homes (medv)based on the following variables:*
+
+*crime rate (crim), proportion of residential land zoned for lots over 25,000 sq.ft (zn), the local pupil teacher ratio (ptratio) and weather the whether the tract bounds Chas River(chas)*
+
+```{r a}
+bh<- lm(medv~crim+zn+ptratio+chas,data=BostonHousing)
+summary(bh)
+
+```
+
+From the above we can observe based on multiple r-squared value that the model explains with **accuracy of 35.99%.** Based on the accuracy r.square value we can say that the model can explain with nearly 36% which might not be considered as a good model.
+
+## b
+
+### i. *When all the parameters are constant and only the buildings differ by tract bounds?*
+
+Let us Consider a real time example where two buildings with same crime rate = 0.02732, zn=17,ptratio of 15.5 and one build tracts the river and one doesn't. then below are the house prices for them.
+
+```{r 3b1}
+# house does not tract river
+chas_0 <-predict(bh,data.frame(crim=0.02732,zn=17,ptratio=15.5,chas='0')) 
+print(paste('The price of the house that is not by the river is',chas_0[[1]],'in 1000 dollars'))
+
+# house is along side river
+chas_1 <-predict(bh,data.frame(crim=0.02732,zn=17,ptratio=15.5,chas='1')) 
+print(paste('The price of the house that is by the river is',chas_1[[1]],'in 1000 dollars'))
+
+```
+
+We can observe that the house by the river has **increase of price by \$4583.926** than the house that is not by the river.
+
+### ii. *Two houses that are identical in all aspects but in the neighborhood of one of them the pupil-teacher ratio is 15 and in the other one is 18. Which one is more expensive and by how much?*
+
+Let us Consider a real time example where two buildings with same crime rate = 0.02732,zn=17, chas =1 and one building is in place where ptratio is 15 and other with 18
+
+```{r 3b2}
+
+ptratio_15<-predict(bh,data.frame(crim=0.02732,zn=17,ptratio=15,chas='1')) 
+print(paste('The house with ptratio 15 has price of ',ptratio_15[[1]],'in 1000 dollars'))
+
+
+
+ptratio_18<-predict(bh,data.frame(crim=0.02732,zn=17,ptratio=18,chas='1')) 
+print(paste('The house with ptratio 18 has price of ',ptratio_18[[1]],'in 1000 dollars'))
+```
+
+We can observe that house with low ptratio has higher price than house with high ptratio. In the above example we can see that there is an **decrease of price by \$4481.01** when ptratio is increased.
+
+## c. *Which of the variables are statistically important ?*
+
+```{r 3c}
+summary(bh)
+```
+
+Based on the p-values of the coefficients above, we can see that p-values for all the independent variables are **statistically significant between 0 and 0.001**
+
+## d. *Use the anova analysis and determine the order of importance of these four variables.*
+
+```{r 3d}
+anova(bh)
+```
+
+Based on the sum squares values of the independent variables, we can determine the order of their importance as below,
+
+1.  Crime rate - 6440.8
+2.  Pupil-Teacher ratio (ptratio) - 4709.5
+3.  Proportion of residential land zoned for lots over 25,000 sq.ft (zn) - 3554.3
+4.  The tract bounds along the Charles River (chas) - 667.2
